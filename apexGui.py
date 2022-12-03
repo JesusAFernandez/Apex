@@ -9,10 +9,12 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from apexApi import ApexAPI
+from apexMongoApi import ApexAPI
+from apexNeo4jApi import App
 from dataFrameModel import pandasModel
 from PyQt5.QtWidgets import QApplication, QTableView
 from PyQt5.QtCore import QAbstractTableModel, Qt
+from apexNeo4jApi import App
 
 import pandas as pd
 
@@ -20,12 +22,16 @@ import pandas as pd
 class Ui_MainWindow(object):
 
     def __init__(self):
-        self.API = ApexAPI()
+        uri = "neo4j+s://00e3f02e.databases.neo4j.io:7687"
+        user = "neo4j"
+        password = "rrff2RqtImRsqHtpGw0VdCRNf3yT6RreLTAqCMT1Rrs"
+        self.neo4jApi = App(uri, user, password)
+        self.mongoAPI = ApexAPI()
 
     def airPortsClicked(self):
         country = self.airportsLineEdit.text()
         if (country != ""):
-            model = pandasModel(self.API.airportsInCountry(country).toPandas())
+            model = pandasModel(self.mongoAPI.airportsInCountry(country).toPandas())
             self.resultsTextBrowser.setModel(model)
             header = self.resultsTextBrowser.horizontalHeader()
             header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
@@ -35,7 +41,7 @@ class Ui_MainWindow(object):
         unitedStates = self.unitedStatesLineEdit.checkState()
         xStops = self.xstopsLineEdit.text()
         codeShare = self.codeshareLineEdit.checkState()
-        model = pandasModel(self.API.Airlines(xStops, codeShare, unitedStates).toPandas())
+        model = pandasModel(self.mongoAPI.Airlines(xStops, codeShare, unitedStates).toPandas())
         header = self.resultsTextBrowser.horizontalHeader()
         header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
         self.resultsTextBrowser.setModel(model)
@@ -44,18 +50,31 @@ class Ui_MainWindow(object):
         countryAirports = self.countryLineEdit.checkState()
         kCities = self.kcitiesLineEdit.text()
         if(countryAirports):
-            model = pandasModel(self.API.highestAirportCountry().toPandas())
+            model = pandasModel(self.mongoAPI.highestAirportCountry().toPandas())
             header = self.resultsTextBrowser.horizontalHeader()
             header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
             self.resultsTextBrowser.setModel(model)
         elif(kCities != ""):
-            self.resultsLabel.setText("Results: Loading")
-            model = pandasModel(self.API.topKCities(kCities).toPandas())
+            model = pandasModel(self.mongoAPI.topKCities(kCities).toPandas())
             header = self.resultsTextBrowser.horizontalHeader()
             header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
             self.resultsTextBrowser.setModel(model)
-            self.resultsLabel.setText("Results: Loaded")
 
+    def recommendationClicked(self):
+        source = self.cityxLineEdit.text()
+        destination = self.cityyLineEdit.text()
+        hops = self.numberofHopsLineEdit.text()
+        stops = self.numberofstopsLineEdit.text()
+
+        stops = stops if stops != "" else 20
+        hops = hops if hops != "" else 5
+
+        if(source and destination):
+            model = self.neo4jApi.basicTripRecommendations(source, destination, stops, hops)
+            model = pandasModel(model)
+            header = self.resultsTextBrowser.horizontalHeader()
+            header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+            self.resultsTextBrowser.setModel(model)
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -158,7 +177,7 @@ class Ui_MainWindow(object):
         self.tab_4.setObjectName("tab_4")
 
         self.stopsNumberLabel = QtWidgets.QLabel(self.tab_4)
-        self.stopsNumberLabel.setGeometry(QtCore.QRect(80, 120, 91, 16))
+        self.stopsNumberLabel.setGeometry(QtCore.QRect(80, 120, 110, 16))
         self.stopsNumberLabel.setObjectName("stopsNumberLabel")
         # number of stops input box
         self.numberofstopsLineEdit = QtWidgets.QLineEdit(self.tab_4)
@@ -166,7 +185,7 @@ class Ui_MainWindow(object):
         self.numberofstopsLineEdit.setObjectName("numberofstopsLineEdit")
 
         self.hopsNumberLabel = QtWidgets.QLabel(self.tab_4)
-        self.hopsNumberLabel.setGeometry(QtCore.QRect(80, 170, 91, 16))
+        self.hopsNumberLabel.setGeometry(QtCore.QRect(80, 170, 110, 16))
         self.hopsNumberLabel.setObjectName("hopsNumberLabel")
 
         self.numberofHopsLineEdit = QtWidgets.QLineEdit(self.tab_4)
@@ -194,6 +213,7 @@ class Ui_MainWindow(object):
         self.reccomendationPushButton.setGeometry(
             QtCore.QRect(900, 220, 75, 23))
         self.reccomendationPushButton.setObjectName("reccomendationPushButton")
+        self.reccomendationPushButton.clicked.connect(self.recommendationClicked)
 
         self.resultsTextBrowser = QtWidgets.QTableView(self.centralwidget)
         self.resultsTextBrowser.setGeometry(QtCore.QRect(10, 320, 1060, 350))
@@ -215,7 +235,7 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "Airport Database"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "Apex"))
         self.airPortsLabel.setText(_translate(
             "MainWindow", "Airports in Country:"))
         self.xStopsLabel.setText(_translate("MainWindow", "X stops:"))
