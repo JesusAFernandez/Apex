@@ -42,16 +42,3 @@ class App:
         )
         result = tx.run(query, cityX=cityX, cityY=cityY)
         return [row.data() for row in result]
-
-
-
-if __name__ == "__main__":
-    # Aura queries use an encrypted connection using the "neo4j+s" URI scheme
-    uri = "neo4j+s://00e3f02e.databases.neo4j.io:7687"
-    user = "neo4j"
-    password = "rrff2RqtImRsqHtpGw0VdCRNf3yT6RreLTAqCMT1Rrs"
-    app = App(uri, user, password)
-    app.basicTripRecommendations("Pasco", "Seattle", 2, 3)
-    # app.create_friendship("PSC", "SEA")
-    
-    app.close()
